@@ -50,6 +50,8 @@ P = {
 
 ## A1.3: Gleitkommazahlen in Programmiersprachen
 
+[python.md](python.md)
+
 ## A1.4: Maildressen?
 
 - Großzeichen gehen auch
@@ -65,4 +67,4 @@ P = {
 
 ## A1.6: Sprache einer regulären Grammatik
 
-![DFA_1.6.png](1.6.png)
+![DFA_1.6.png](DFA_1.6.png)
