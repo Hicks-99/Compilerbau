@@ -51,6 +51,7 @@ P = {
 ## A1.3: Gleitkommazahlen in Programmiersprachen
 
 [python.md](python.md)
+[java.md](java.md)
 
 ## A1.4: Maildressen?
 
