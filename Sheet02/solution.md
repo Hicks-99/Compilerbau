@@ -1,4 +1,42 @@
 # A2.1: PDA
+L = { w ∈ { a , b , c } ∗ | w hat doppelt so viele a’s wie c’s } 
+
+P = ( Q ,   Σ ,   Γ ,   δ ,   q 0 ,   ⊥ ,   F ) 
+
+P = ({q0, q1}, {a,b,c}, {a,A,c,C}, δ, q0, ⊥, {q1})
+
+δ sieht man anhand des nachfolgenden Diagrams. Ich denke das braucht man nicht extra aufschreiben.
+
+![a2_1_pda.png](a2_1_pda.png)
+
+## Beschreibung der Eingaben
+### bcaba
+Startzustand: q0
+
+
+| Zustand | Buchstabe | Übergang | Stack |
+|---------|-----------|----------|-------|
+|   q0    |           |          |   ⊥   |
+|   q0    |    b      |  b,ε / ε |   ⊥   |
+|   q0    |    c      |  c,⊥ / C |   C⊥  |
+|   q0    |    a      |  a,C / c |   c⊥  |
+|   q0    |    b      |  b,ε / ε |   c⊥  |
+|   q0    |    a      |  a,c / ε |   ⊥   |
+|   q1    |    ε      |  ε ⊥ / ⊥ |   ⊥   |
+
+### bccac
+Startzustand: q0
+
+| Zustand | Buchstabe | Übergang | Stack |
+|---------|-----------|----------|-------|
+|   q0    |           |          |   ⊥   |
+|   q0    |    b      |  b,ε / ε |   ⊥   |
+|   q0    |    c      |  c,⊥ / C |   C⊥  |
+|   q0    |    c      |  c,⊥ / C |  CC⊥  |
+|   q0    |    a      |  a,C / c |  cC⊥  |
+|   q0    |    c      |  c,c / cC|  CcC⊥ |
+|   XX    |    ε      |    XX    |  CcC⊥ |
+
 
 # A2.2: Akzeptierte Sprache
 
