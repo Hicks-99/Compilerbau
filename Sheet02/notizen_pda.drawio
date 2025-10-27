@@ -1,0 +1,43 @@
+<mxfile host="65bd71144e">
+    <diagram id="V7QI4d4V5A124T5CQpFa" name="Page-1">
+        <mxGraphModel dx="2640" dy="2112" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="B&#39;s jucken mich nicht. Kommen nicht auf den Stack" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry y="-780" width="100" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Wenn ich ein a habe und ein C finde, dann nehme ich ein C aus dem Stack. Tue ein c in den Stack herein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;rotation=0;" vertex="1" parent="1">
+                    <mxGeometry y="-920" width="580" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Wenn ich ein c habe und ein A im Stack finde, dann nehme ich es raus und tue nichts in den Stack herein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry x="5" y="-1100" width="580" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Wenn ich ein a habe und ein c finde, dann nehme ich das c heraus und tue nichts in den Stack herein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-900" width="560" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Wenn ich ein a habe und ich finde nichts im stack, dann tue ich ein a in den Stack herein." style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-880" width="500" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Wenn ich ein a habe und ein a im Stack finde tue ich ein A in den Stack hinein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-860" width="440" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="Wenn ich ein c habe und ich finde nichts im Stack, dann tue ein C in den Stack hinein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-1070" width="480" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="Wenn ich ein c habe und ich finde ein c im Stack, dann tue ich ein C in den Stack hinein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-1040" width="490" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="Wenn ich ein c habe und ich finde ein a im Stack, dann nehme ich es raus und tue ein c in den Stack hinein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-1010" width="590" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="Wenn ich ein a habe und ein A im Stack finde tue ich ein a in den Stack hinein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-840" width="440" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="Wenn ich ein c habe und ich finde ein C im Stack, dann tue ich ein C in den Stack hinein" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry y="-980" width="490" height="30" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
