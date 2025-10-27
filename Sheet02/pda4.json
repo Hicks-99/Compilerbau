@@ -1,0 +1,508 @@
+﻿{
+  "name": "Kontextfreie Grammatik",
+  "description": "",
+  "type": "NKA",
+  "automaton": {
+    "acceptCache": [],
+    "simulationInput": [
+      "a",
+      "b",
+      "c"
+    ],
+    "Alphabet": [
+      "a",
+      "b",
+      "c"
+    ],
+    "StackAlphabet": [
+      "⊥",
+      "a",
+      "b",
+      "c"
+    ],
+    "States": [
+      {
+        "ID": 1,
+        "Name": "q0",
+        "x": 200,
+        "y": 150,
+        "Final": true,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 1,
+            "Target": 2,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "a",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 1,
+            "Target": 3,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "a",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 1,
+            "Target": 4,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "b",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          }
+        ],
+        "Start": true
+      },
+      {
+        "ID": 2,
+        "Name": "q1",
+        "x": 410,
+        "y": 350,
+        "Final": true,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 2,
+            "Target": 2,
+            "x": 100,
+            "y": 10,
+            "Labels": [
+              [
+                "⊥",
+                "a",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 2,
+            "Target": 3,
+            "x": -10,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "a",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 2,
+            "Target": 4,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "b",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          }
+        ],
+        "Start": false
+      },
+      {
+        "ID": 3,
+        "Name": "q2",
+        "x": 410,
+        "y": 150,
+        "Final": false,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 3,
+            "Target": 3,
+            "x": 0,
+            "y": -150,
+            "Labels": [
+              [
+                "b",
+                "a",
+                [
+                  "b",
+                  "b"
+                ]
+              ],
+              [
+                "⊥",
+                "a",
+                [
+                  "b",
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 3,
+            "Target": 7,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "b",
+                "b",
+                []
+              ]
+            ]
+          },
+          {
+            "Source": 3,
+            "Target": 6,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "b",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          }
+        ],
+        "Start": false
+      },
+      {
+        "ID": 4,
+        "Name": "q3",
+        "x": 200,
+        "y": 350,
+        "Final": false,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 4,
+            "Target": 4,
+            "x": -60,
+            "y": 0,
+            "Labels": [
+              [
+                "c",
+                "b",
+                [
+                  "c",
+                  "c"
+                ]
+              ],
+              [
+                "⊥",
+                "b",
+                [
+                  "c",
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 4,
+            "Target": 5,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "c",
+                "c",
+                []
+              ]
+            ]
+          },
+          {
+            "Source": 4,
+            "Target": 8,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "c",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          }
+        ],
+        "Start": false
+      },
+      {
+        "ID": 5,
+        "Name": "q4",
+        "x": 200,
+        "y": 530,
+        "Final": false,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 5,
+            "Target": 8,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "c",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 5,
+            "Target": 5,
+            "x": -70,
+            "y": 0,
+            "Labels": [
+              [
+                "c",
+                "c",
+                []
+              ]
+            ]
+          }
+        ],
+        "Start": false
+      },
+      {
+        "ID": 6,
+        "Name": "q5",
+        "x": 620,
+        "y": 350,
+        "Final": true,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 6,
+            "Target": 6,
+            "x": 70,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "c",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          }
+        ],
+        "Start": false
+      },
+      {
+        "ID": 7,
+        "Name": "q6",
+        "x": 620,
+        "y": 150,
+        "Final": false,
+        "Radius": 30,
+        "Transitions": [
+          {
+            "Source": 7,
+            "Target": 6,
+            "x": 0,
+            "y": 0,
+            "Labels": [
+              [
+                "⊥",
+                "b",
+                [
+                  "⊥"
+                ]
+              ]
+            ]
+          },
+          {
+            "Source": 7,
+            "Target": 7,
+            "x": 130,
+            "y": -10,
+            "Labels": [
+              [
+                "b",
+                "b",
+                []
+              ]
+            ]
+          }
+        ],
+        "Start": false
+      },
+      {
+        "ID": 8,
+        "Name": "q7",
+        "x": 400,
+        "y": 530,
+        "Final": true,
+        "Radius": 30,
+        "Transitions": [],
+        "Start": false
+      }
+    ],
+    "lastInputs": [
+      [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "b",
+        "b",
+        "b",
+        "b",
+        "b",
+        "b",
+        "b",
+        "b",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c"
+      ],
+      [
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "a",
+        "b",
+        "b",
+        "b",
+        "c",
+        "c",
+        "c"
+      ],
+      [
+        "a"
+      ],
+      [
+        "b",
+        "c",
+        "a",
+        "b",
+        "a",
+        "a"
+      ],
+      [
+        "a",
+        "c",
+        "b",
+        "b",
+        "a",
+        "a"
+      ],
+      [
+        "a",
+        "b",
+        "c"
+      ],
+      [
+        "c",
+        "c",
+        "c",
+        "a",
+        "a",
+        "b",
+        "a",
+        "c",
+        "b",
+        "c",
+        "a"
+      ],
+      [
+        "c",
+        "b",
+        "b"
+      ],
+      [
+        "b",
+        "b",
+        "b",
+        "b",
+        "b",
+        "b"
+      ],
+      [
+        "a",
+        "b"
+      ],
+      [
+        "b",
+        "c",
+        "c"
+      ],
+      [
+        "b",
+        "c"
+      ],
+      [
+        "b",
+        "b",
+        "c"
+      ],
+      [
+        "c",
+        "b"
+      ],
+      [
+        "b"
+      ],
+      [
+        "a",
+        "c",
+        "b",
+        "a",
+        "a"
+      ],
+      [
+        "a",
+        "b",
+        "b",
+        "c",
+        "c"
+      ]
+    ]
+  }
+}
