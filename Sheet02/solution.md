@@ -139,9 +139,9 @@ G = {
 }
 
 P = {
-&nbsp;&nbsp;&nbsp;&nbsp;    S -> D | A
+&nbsp;&nbsp;&nbsp;&nbsp;    S -> C | A
 &nbsp;&nbsp;&nbsp;&nbsp;    A -> aA | E | ϵ
-&nbsp;&nbsp;&nbsp;&nbsp;    C -> cC | ϵ
+&nbsp;&nbsp;&nbsp;&nbsp;    C -> Cc | ϵ | D
 &nbsp;&nbsp;&nbsp;&nbsp;    D -> aDb | C | ϵ
 &nbsp;&nbsp;&nbsp;&nbsp;    E -> bEc | ϵ
 }
