@@ -10,7 +10,7 @@ P = ({q0, q1}, {a,b,c}, {a,A,c,C}, δ, q0, ⊥, {q1})
 
 δ sieht man anhand des nachfolgenden Diagrams. Ich denke das braucht man nicht extra aufschreiben.
 
->[!Attention]
+>[!WARNING]
 > Wir können den Automaten nicht deterministisch machen, weil der aktuelle Automat den Zustand aacca nicht akzeptiert. Er würde das Akzeptieren, wenn wir a,A | Aa nehmen würden, allerdings würde dann aaaacc nicht akzeptiert werden. 
 > Also sagen wir, dass der Automat sowohl a,A | Aa als auch a,A | aA akzeptiert und somit ist er nicht mehr deterministisch. 
 
