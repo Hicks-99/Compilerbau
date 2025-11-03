@@ -12,6 +12,7 @@ statement
     : assignment
     | ifStatement
     | whileStatement
+    | expression NEWLINE
     ;
 
 assignment
