@@ -1,0 +1,35 @@
+a := 0
+if 10 < 1 do
+    a := 0
+    if 10 < 1 do
+        a := 42
+    else do
+        a := 7
+    end
+else do
+    a := 7
+end
+
+
+a := 10
+b := 0
+while a == 0 do
+    a := a - 1
+    b := b + 9
+    while a == 0 do
+        a := a - 1
+        b := b + 9
+    end
+end
+
+while a > 0 do
+    a := a - 1
+    b := b + 9
+end
+
+a := "abc"
+if a < "abc" do
+    a := "wuppie"
+else do
+    a := "nope"
+end
