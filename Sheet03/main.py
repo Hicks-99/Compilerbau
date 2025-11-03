@@ -1,9 +1,10 @@
-from antlr4 import InputStream, CommonTokenStream
+from antlr4 import *
 from PrettyLangLexer import PrettyLangLexer
 from PrettyLangParser import PrettyLangParser
 
-
-input_text = input("> ")
+file_name = input("Enter the file name: ")
+with open(file_name, 'r') as file:
+    input_text =  file.read()
 lexer = PrettyLangLexer(InputStream(input_text))
 stream = CommonTokenStream(lexer)
 parser = PrettyLangParser(stream)
