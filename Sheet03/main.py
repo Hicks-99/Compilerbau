@@ -60,5 +60,23 @@ def more_formatting(node: TerminalNodeImpl, indent:int) -> str:
 
     return ""
 
+def to_ast(parsetree: PrettyLangParser.ProgramContext):
+    
+    match type(parsetree): 
+        case PrettyLangParser.ExpressionContext | PrettyLangParser.AssignmentContext | PrettyLangParser.LiteralContext : 
+            parsetree.parentCtx.children = parsetree.children
+            for child in parsetree.children: 
+                child.parentCtx = parsetree.parentCtx
 
-print(pretty_printer(mytree))
+    for child in parsetree.getChildren():
+        if type(child) != TerminalNodeImpl:
+            to_ast(child)
+
+    return parsetree
+
+print(mytree.toStringTree(recog=parser)) 
+print(' ')
+mayonanise = to_ast(mytree)
+print(pretty_printer(mayonanise))
+
+#print(pretty_printer(mytree))
