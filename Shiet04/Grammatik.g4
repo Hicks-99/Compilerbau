@@ -2,13 +2,21 @@ grammar Grammatik;
 
 start: stmt* ;
 
-stmt: literal | expr+;
+stmt: literal
+    | expr+;
 
-expr: '(' ((operator (literal | expr)+) | function | functioncall) COMMENT* ')';
+expr: '(' ((operator (literal | expr)+)
+    | function
+    | functioncall) COMMENT* ')';
 
-operator:  COMP | ARITH;
+operator:  COMP
+        | ARITH;
 
-literal: NUM | ID | BOOL | COMMENT | STRING;
+literal: NUM
+       | ID
+       | BOOL
+       | COMMENT
+       | STRING;
 
 function: 'defn' ID '(' (ID)* ')' expr;
 
