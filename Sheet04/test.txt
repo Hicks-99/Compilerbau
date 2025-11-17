@@ -1,0 +1,16 @@
+;;    bindings      use names here
+(let  (name value)  (code that uses name))
+
+(def x 99)   ;; globale Variable x
+(def y 101)  ;; globale Variable y
+(def z 42)   ;; globale Variable z
+(let (x 1   ;; lokales x mit Wert 1(verdeckt globales x)
+      y 2)  ;; lokales y mit Wert 2
+     (+ x y z))  ;; 1+2+42
+
+(defn  hello
+       (n)
+       (let (l 42)  ;; l is valid in this scope
+            (str "hello " n ": " l)
+       )  ;; end of local scope
+)  ;; end of function definition
