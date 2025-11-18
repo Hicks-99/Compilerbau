@@ -58,7 +58,7 @@ class Lexer:
                 case _: 
                     raise SyntaxError(f'Invalid Character {self.peek}')
             
-            print(char)
+            #print(char)
         return Token("<EOF>", "<EOF>")
 
     def consume(self):
@@ -105,7 +105,7 @@ class Lexer:
         while(True): 
             buffer += self.peek
             self.consume()
-            print(self.peek)
+            #print(self.peek)
             if self.peek == ';':
                 full_comment = True
             if full_comment and self.peek == "\n":
