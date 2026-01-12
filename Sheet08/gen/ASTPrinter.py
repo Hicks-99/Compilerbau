@@ -14,6 +14,11 @@ class ASTPrinter:
         """Main entry point to print an AST node"""
         node.accept(self)
     
+    def _print_statement_list(self, statements: List[Statement]):
+        """Helper to print a list of statements"""
+        for stmt in statements:
+            stmt.accept(self)
+    
     # Program
     def visit_program(self, node: Program):
         self._print("Program")
@@ -48,7 +53,7 @@ class ASTPrinter:
         
         self._print("Body:")
         self.indent += self.indent_size
-        node.body.accept(self)
+        self._print_statement_list(node.body)
         self.indent -= self.indent_size
         self.indent -= self.indent_size
     
@@ -71,7 +76,7 @@ class ASTPrinter:
         
         self._print("Body:")
         self.indent += self.indent_size
-        node.body.accept(self)
+        self._print_statement_list(node.body)
         self.indent -= self.indent_size
         self.indent -= self.indent_size
     
@@ -88,7 +93,7 @@ class ASTPrinter:
         
         self._print("Body:")
         self.indent += self.indent_size
-        node.body.accept(self)
+        self._print_statement_list(node.body)
         self.indent -= self.indent_size
         self.indent -= self.indent_size
     
@@ -119,13 +124,6 @@ class ASTPrinter:
         self.indent -= self.indent_size
     
     # Statements
-    def visit_block(self, node: Block):
-        self._print("Block")
-        self.indent += self.indent_size
-        for stmt in node.statements:
-            stmt.accept(self)
-        self.indent -= self.indent_size
-    
     def visit_if_statement(self, node: IfStatement):
         self._print("If Statement")
         self.indent += self.indent_size
@@ -136,13 +134,13 @@ class ASTPrinter:
         
         self._print("Then:")
         self.indent += self.indent_size
-        node.then_stmt.accept(self)
+        self._print_statement_list(node.then_stmt)
         self.indent -= self.indent_size
         
         if node.else_stmt:
             self._print("Else:")
             self.indent += self.indent_size
-            node.else_stmt.accept(self)
+            self._print_statement_list(node.else_stmt)
             self.indent -= self.indent_size
         self.indent -= self.indent_size
     
@@ -156,7 +154,7 @@ class ASTPrinter:
         
         self._print("Body:")
         self.indent += self.indent_size
-        node.body.accept(self)
+        self._print_statement_list(node.body)
         self.indent -= self.indent_size
         self.indent -= self.indent_size
     

@@ -29,11 +29,11 @@ class ClassDefinition(Declaration):
         return visitor.visit_class_definition(self)
 
 class FunctionDefinition(Declaration):
-    def __init__(self, return_type: 'Type', name: str, parameters: List['Parameter'], body: 'Block'):
+    def __init__(self, return_type: 'Type', name: str, parameters: List['Parameter'], body: List['Statement']):
         self.return_type = return_type
         self.name = name
         self.parameters = parameters
-        self.body = body
+        self.body = body  # Jetzt direkt eine Liste von Statements
     
     def accept(self, visitor):
         return visitor.visit_function_definition(self)
@@ -43,21 +43,21 @@ class ClassMember(ASTNode):
     pass
 
 class MethodDefinition(ClassMember):
-    def __init__(self, is_virtual: bool, return_type: 'Type', name: str, parameters: List['Parameter'], body: 'Block'):
+    def __init__(self, is_virtual: bool, return_type: 'Type', name: str, parameters: List['Parameter'], body: List['Statement']):
         self.is_virtual = is_virtual
         self.return_type = return_type
         self.name = name
         self.parameters = parameters
-        self.body = body
+        self.body = body  # Jetzt direkt eine Liste von Statements
     
     def accept(self, visitor):
         return visitor.visit_method_definition(self)
 
 class ConstructorDefinition(ClassMember):
-    def __init__(self, name: str, parameters: List['Parameter'], body: 'Block'):
+    def __init__(self, name: str, parameters: List['Parameter'], body: List['Statement']):
         self.name = name
         self.parameters = parameters
-        self.body = body
+        self.body = body  # Jetzt direkt eine Liste von Statements
     
     def accept(self, visitor):
         return visitor.visit_constructor_definition(self)
@@ -92,26 +92,19 @@ class Parameter(ASTNode):
 class Statement(ASTNode):
     pass
 
-class Block(Statement):
-    def __init__(self, statements: List[Statement]):
-        self.statements = statements
-    
-    def accept(self, visitor):
-        return visitor.visit_block(self)
-
 class IfStatement(Statement):
-    def __init__(self, condition: 'Expression', then_stmt: Statement, else_stmt: Optional[Statement]):
+    def __init__(self, condition: 'Expression', then_stmt: List['Statement'], else_stmt: Optional[List['Statement']]):
         self.condition = condition
-        self.then_stmt = then_stmt
-        self.else_stmt = else_stmt
+        self.then_stmt = then_stmt  # Liste von Statements
+        self.else_stmt = else_stmt  # Optional: Liste von Statements
     
     def accept(self, visitor):
         return visitor.visit_if_statement(self)
 
 class WhileStatement(Statement):
-    def __init__(self, condition: 'Expression', body: Statement):
+    def __init__(self, condition: 'Expression', body: List['Statement']):
         self.condition = condition
-        self.body = body
+        self.body = body  # Liste von Statements
     
     def accept(self, visitor):
         return visitor.visit_while_statement(self)

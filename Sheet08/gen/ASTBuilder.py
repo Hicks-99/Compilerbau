@@ -43,7 +43,7 @@ class ASTBuilder(MiniCVisitor):
         return_type = self.visitType(ctx.type_())
         name = ctx.Identifier().getText()
         parameters = self.visitParameterList(ctx.parameterList()) if ctx.parameterList() else []
-        body = self.visitBlock(ctx.block())
+        body = self.visitBlockStatements(ctx.block())  # Gibt jetzt eine Liste zurück
         return FunctionDefinition(return_type, name, parameters, body)
     
     def visitMethodDefinition(self, ctx: MiniCParser.MethodDefinitionContext) -> MethodDefinition:
@@ -51,13 +51,13 @@ class ASTBuilder(MiniCVisitor):
         return_type = self.visitType(ctx.type_())
         name = ctx.Identifier().getText()
         parameters = self.visitParameterList(ctx.parameterList()) if ctx.parameterList() else []
-        body = self.visitBlock(ctx.block())
+        body = self.visitBlockStatements(ctx.block())  # Gibt jetzt eine Liste zurück
         return MethodDefinition(is_virtual, return_type, name, parameters, body)
     
     def visitConstructorDefinition(self, ctx: MiniCParser.ConstructorDefinitionContext) -> ConstructorDefinition:
         name = ctx.Identifier().getText()
         parameters = self.visitParameterList(ctx.parameterList()) if ctx.parameterList() else []
-        body = self.visitBlock(ctx.block())
+        body = self.visitBlockStatements(ctx.block())  # Gibt jetzt eine Liste zurück
         return ConstructorDefinition(name, parameters, body)
     
     def visitVariableDeclaration(self, ctx: MiniCParser.VariableDeclarationContext) -> VariableDeclaration:
@@ -92,13 +92,14 @@ class ASTBuilder(MiniCVisitor):
             return ctx.Identifier().getText()  # Custom class type
         return None
     
-    def visitBlock(self, ctx: MiniCParser.BlockContext) -> Block:
+    def visitBlockStatements(self, ctx: MiniCParser.BlockContext) -> List[Statement]:
+        """Returns a list of statements from a block (without creating a Block node)"""
         statements = []
         for stmt_ctx in ctx.statement():
             stmt = self.visitStatement(stmt_ctx)
             if stmt:
                 statements.append(stmt)
-        return Block(statements)
+        return statements
     
     def visitStatement(self, ctx: MiniCParser.StatementContext) -> Statement:
         if ctx.variableDeclaration():
@@ -110,7 +111,8 @@ class ASTBuilder(MiniCVisitor):
         elif ctx.returnStatement():
             return self.visitReturnStatement(ctx.returnStatement())
         elif ctx.block():
-            return self.visitBlock(ctx.block())
+            # Nested block - flatten it into the statement list
+            return self.visitBlockStatements(ctx.block())
         elif ctx.expression():
             expr = self.visitExpression(ctx.expression())
             return ExpressionStatement(expr)
@@ -150,13 +152,38 @@ class ASTBuilder(MiniCVisitor):
     
     def visitIfStatement(self, ctx: MiniCParser.IfStatementContext) -> IfStatement:
         condition = self.visitExpression(ctx.expression())
-        then_stmt = self.visitStatement(ctx.statement(0))
-        else_stmt = self.visitStatement(ctx.statement(1)) if ctx.ELSE() else None
+        
+        # then_stmt can be a single statement or a block
+        then_stmt_ctx = ctx.statement(0)
+        if then_stmt_ctx.block():
+            then_stmt = self.visitBlockStatements(then_stmt_ctx.block())
+        else:
+            stmt = self.visitStatement(then_stmt_ctx)
+            then_stmt = [stmt] if stmt else []
+        
+        # else_stmt is optional
+        else_stmt = None
+        if ctx.ELSE():
+            else_stmt_ctx = ctx.statement(1)
+            if else_stmt_ctx.block():
+                else_stmt = self.visitBlockStatements(else_stmt_ctx.block())
+            else:
+                stmt = self.visitStatement(else_stmt_ctx)
+                else_stmt = [stmt] if stmt else []
+        
         return IfStatement(condition, then_stmt, else_stmt)
     
     def visitWhileStatement(self, ctx: MiniCParser.WhileStatementContext) -> WhileStatement:
         condition = self.visitExpression(ctx.expression())
-        body = self.visitStatement(ctx.statement())
+        
+        # body can be a single statement or a block
+        body_ctx = ctx.statement()
+        if body_ctx.block():
+            body = self.visitBlockStatements(body_ctx.block())
+        else:
+            stmt = self.visitStatement(body_ctx)
+            body = [stmt] if stmt else []
+        
         return WhileStatement(condition, body)
     
     def visitReturnStatement(self, ctx: MiniCParser.ReturnStatementContext) -> ReturnStatement:
