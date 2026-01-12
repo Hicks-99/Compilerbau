@@ -1,32 +1,43 @@
 grammar Grammatik;
 
-start: stmt* ;
+start: stmt* EOF;
 
-stmt: literal
-    | expr+;
+stmt: expr
+    | comment;
 
-expr: '(' ((operator (literal | expr)+)
-    | function
-    | functioncall) COMMENT* ')';
+expr: literal
+    | sexpr;
 
-operator:  COMP
-        | ARITH;
+sexpr: '(' operator expr+ ')'                          // Operatoren: (+1 2 3)
+     | '(' 'if' expr expr expr? ')'                    // if-then-else
+     | '(' 'do' expr+ ')'                              // do Block
+     | '(' 'def' ID expr ')'                           // Variable definieren
+     | '(' 'defn' ID '(' ID* ')' expr ')'              // Funktion definieren
+     | '(' 'let' '(' binding+ ')' expr ')'             // lokaler Scope
+     | '(' 'print' expr ')'                            // eingebaute Funktion
+     | '(' 'str' expr+ ')'                             // eingebaute Funktion
+     | '(' 'list' expr* ')'                            // Listen erstellen
+     | '(' 'nth' expr expr ')'                         // Listenzugriff
+     | '(' 'head' expr ')'                             // erstes Element
+     | '(' 'tail' expr ')'                             // Rest der Liste
+     | '(' ID expr+ ')';                               // Funktionsaufruf
+
+binding: ID expr;
+
+operator: COMP | ARITH;
 
 literal: NUM
-       | ID
        | BOOL
-       | COMMENT
-       | STRING;
+       | STRING
+       | ID;
 
-function: 'defn' ID '(' (ID)* ')' expr;
-
-functioncall: ID (literal | expr)+;
+comment: COMMENT;
 
 NUM     : [0-9]+ ;
 BOOL    : 'true' | 'false';
-STRING  : ["]~["]*["];
-ID      : [a-z][a-zA-Z]* ;
-COMP    : [=<>];
-ARITH   : [+\-*/];
-WS      : [ \t\n]+ -> skip;
-COMMENT : ';;' ~[\n]*;
+STRING  : '"' (~["\r\n] | '\\' .)* '"';
+ID      : [a-z][a-zA-Z0-9]* ;
+COMP    : '=' | '>' | '<';
+ARITH   : '+' | '-' | '*' | '/';
+WS      : [ \t\r\n]+ -> skip;
+COMMENT : ';;' ~[\r\n]*;
