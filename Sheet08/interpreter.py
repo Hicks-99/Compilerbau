@@ -1,15 +1,15 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from antlr4 import FileStream, CommonTokenStream
+from typing import Any, Dict, List, Optional, Tuple, Union
+from antlr4 import FileStream, CommonTokenStream, InputStream
 from antlr4.error.ErrorListener import ErrorListener
 
 from gen.MiniCLexer import MiniCLexer
 from gen.MiniCParser import MiniCParser
 from gen.ASTBuilder import ASTBuilder
 from gen import AST
-from semantic import SemanticAnalyzer, SemanticError, ReferenceType, ClassSymbol
+from semantic import SemanticAnalyzer, SemanticError, ReferenceType, ClassSymbol, FunctionSymbol
 
 
 """
@@ -37,41 +37,43 @@ Key limitations:
 """
 
 
-
 class RuntimeError(Exception):
     pass
 
 
 class ReturnException(Exception):
     """Used to implement return statements"""
+
     def __init__(self, value):
         self.value = value
 
 
 class ObjectValue:
     """Represents an instance of a class"""
+
     def __init__(self, class_name: str, fields: Dict[str, Any]):
         self.class_name = class_name
         self.fields = fields
         self.vtable = {}  # Virtual method table: method_name -> actual implementation
-    
+
     def __repr__(self):
         return f"<{self.class_name} object>"
 
 
 class ReferenceValue:
     """Represents a reference to a variable"""
+
     def __init__(self, target_name: str, scope: Dict[str, Any]):
         self.target_name = target_name
         self.scope = scope
-    
+
     def get(self) -> Any:
         # Follow the reference chain in case we have a reference to a reference
         value = self.scope[self.target_name]
         if isinstance(value, ReferenceValue):
             return value.get()
         return value
-    
+
     def set(self, value: Any):
         # Follow the reference chain
         current = self.scope[self.target_name]
@@ -83,22 +85,24 @@ class ReferenceValue:
 
 class FieldReferenceValue:
     """Represents a reference to an object field"""
+
     def __init__(self, obj: ObjectValue, field_name: str):
         self.obj = obj
         self.field_name = field_name
-    
+
     def get(self) -> Any:
         return self.obj.fields[self.field_name]
-    
+
     def set(self, value: Any):
         self.obj.fields[self.field_name] = value
 
 
 class Interpreter:
-    def __init__(self):
+    def __init__(self, node_symbols: Dict[Any, Any] = None):
         self.scopes: List[Dict[str, Any]] = []
         self.classes: Dict[str, AST.ClassDefinition] = {}
-        self.functions: Dict[str, List[Tuple[AST.FunctionDefinition, Dict[str, Any]]]] = {}
+        self.functions: Dict[str,
+                             List[Tuple[AST.FunctionDefinition, Dict[str, Any]]]] = {}
         self.builtin_functions = {
             'print_int': self._builtin_print_int,
             'print_bool': self._builtin_print_bool,
@@ -106,6 +110,9 @@ class Interpreter:
             'print_string': self._builtin_print_string,
         }
         self.output = []
+        self.repl_mode = False
+        self.node_symbols = node_symbols or {}
+        # The first scope is our persistent session scope
         self.push_scope()
 
     def push_scope(self):
@@ -162,16 +169,30 @@ class Interpreter:
         if 'main' in self.functions:
             try:
                 main_func = self.functions['main'][0][0]
-                self.visit_function_definition(main_func, [])
-            except ReturnException as e:
+                # Execute main body in the session scope
+                for stmt in main_func.body:
+                    self.visit_statement(stmt)
+            except ReturnException:
                 pass
+
+    def visit_repl_node(self, node: Union[AST.Declaration, AST.Statement]):
+        """Execute a single node (declaration or statement) in REPL mode"""
+        if isinstance(node, AST.ClassDefinition):
+            self.classes[node.name] = node
+        elif isinstance(node, AST.FunctionDefinition):
+            if node.name not in self.functions:
+                self.functions[node.name] = []
+            self.functions[node.name].append((node, {}))
+        elif isinstance(node, AST.Statement):
+            self.visit_statement(node)
 
     def visit_program(self, node: AST.Program):
         self.interpret(node)
 
     def visit_function_definition(self, node: AST.FunctionDefinition, args: List[Any]) -> Any:
         """Execute a function with given arguments"""
-        self.push_scope()
+        old_scopes = self.scopes
+        self.scopes = [{}]
 
         # Bind parameters
         for i, param in enumerate(node.parameters):
@@ -187,14 +208,15 @@ class Interpreter:
         except ReturnException as e:
             return e.value
         finally:
-            self.pop_scope()
+            self.scopes = old_scopes
 
     def visit_class_definition(self, node: AST.ClassDefinition):
         pass  # Classes are handled during instantiation
 
     def visit_method_definition(self, node: AST.MethodDefinition, obj: ObjectValue, args: List[Any]) -> Any:
         """Execute a method with given object and arguments"""
-        self.push_scope()
+        old_scopes = self.scopes
+        self.scopes = [{}]
 
         # Make object fields available as variables
         for field_name, field_value in obj.fields.items():
@@ -214,15 +236,29 @@ class Interpreter:
             return e.value
         finally:
             # Update object fields from scope
+            param_names = {p.name for p in node.parameters}
             for field_name in obj.fields:
-                if field_name in self.scopes[-1]:
+                if field_name in self.scopes[-1] and field_name not in param_names:
                     obj.fields[field_name] = self.scopes[-1][field_name]
 
-            self.pop_scope()
+            self.scopes = old_scopes
 
     def visit_constructor_definition(self, node: AST.ConstructorDefinition, obj: ObjectValue, args: List[Any]):
         """Execute a constructor"""
-        self.push_scope()
+        # Call parent's default constructor first if exists
+        sym = self.node_symbols.get(node)
+        from semantic import FunctionSymbol
+        if isinstance(sym, FunctionSymbol) and sym.class_name:
+            class_def = self.classes.get(sym.class_name)
+            if class_def and class_def.parent:
+                parent_def = self.classes.get(class_def.parent)
+                if parent_def:
+                    parent_ctor = self.find_constructor(parent_def, 0)
+                    if parent_ctor:
+                        self.visit_constructor_definition(parent_ctor, obj, [])
+
+        old_scopes = self.scopes
+        self.scopes = [{}]
 
         # Make object fields available as variables
         for field_name, field_value in obj.fields.items():
@@ -241,29 +277,34 @@ class Interpreter:
             pass
         finally:
             # Update object fields from scope
+            # Ensure we don't overwrite fields with parameters that shaded them
+            param_names = {p.name for p in node.parameters}
             for field_name in obj.fields:
-                if field_name in self.scopes[-1]:
+                if field_name in self.scopes[-1] and field_name not in param_names:
                     obj.fields[field_name] = self.scopes[-1][field_name]
 
-            self.pop_scope()
+            self.scopes = old_scopes
 
     def visit_variable_declaration(self, node: AST.VariableDeclaration):
         """Declare a variable"""
         value = None
-        
+
         # Check if this is a reference type
         if node.var_type.is_reference:
             # For reference types, we must have an initializer
             if not node.initializer:
-                raise RuntimeError(f"Reference '{node.name}' must be initialized.")
-            
+                raise RuntimeError(
+                    f"Reference '{node.name}' must be initialized.")
+
             # For reference variables, we need to extract the variable name from the initializer
             if isinstance(node.initializer, AST.IdentifierExpression):
                 # Simple case: T& x = y;
                 target_var_name = node.initializer.name
-                target_val, target_scope = self.resolve_variable(target_var_name)
+                target_val, target_scope = self.resolve_variable(
+                    target_var_name)
                 if target_scope is None:
-                    raise RuntimeError(f"Cannot initialize reference with undefined variable '{target_var_name}'.")
+                    raise RuntimeError(
+                        f"Cannot initialize reference with undefined variable '{target_var_name}'.")
                 value = ReferenceValue(target_var_name, target_scope)
             elif isinstance(node.initializer, AST.MemberAccessExpression):
                 # Case: T& x = obj.field;
@@ -272,18 +313,21 @@ class Interpreter:
                 if isinstance(obj_val, ObjectValue):
                     # Create a special reference to an object field
                     # For now, just store the object and field name
-                    value = FieldReferenceValue(obj_val, node.initializer.member)
+                    value = FieldReferenceValue(
+                        obj_val, node.initializer.member)
                 else:
-                    raise RuntimeError("Cannot initialize reference with non-object member access.")
+                    raise RuntimeError(
+                        "Cannot initialize reference with non-object member access.")
             else:
-                raise RuntimeError(f"Reference '{node.name}' must be initialized with an lvalue.")
+                raise RuntimeError(
+                    f"Reference '{node.name}' must be initialized with an lvalue.")
         # Check if this is a class type
         elif node.var_type.base_type in self.classes:
             # Instantiate the class
             if node.initializer:
                 # User provided an initializer (e.g., A x = A(5); or A x = b; where b is a subclass)
                 value = self.visit_expression(node.initializer)
-                
+
                 # Check if we need to slice (assigning a derived object to a base variable)
                 if isinstance(value, ObjectValue) and value.class_name != node.var_type.base_type:
                     # Check if value.class_name is a subclass of node.var_type.base_type
@@ -305,14 +349,14 @@ class Interpreter:
             # Primitive type
             if node.initializer:
                 value = self.visit_expression(node.initializer)
-        
+
         self.declare_variable(node.name, value)
 
     def visit_statement(self, stmt: AST.Statement):
         if isinstance(stmt, AST.VariableDeclaration):
             self.visit_variable_declaration(stmt)
         elif isinstance(stmt, AST.ExpressionStatement):
-            self.visit_expression(stmt.expression)
+            return self.visit_expression_statement(stmt)
         elif isinstance(stmt, AST.BlockStatement):
             self.visit_block_statement(stmt)
         elif isinstance(stmt, AST.IfStatement):
@@ -321,6 +365,16 @@ class Interpreter:
             self.visit_while_statement(stmt)
         elif isinstance(stmt, AST.ReturnStatement):
             self.visit_return_statement(stmt)
+
+    def visit_expression_statement(self, stmt: AST.ExpressionStatement) -> Any:
+        result = self.visit_expression(stmt.expression)
+        if self.repl_mode:
+            # We skip 'None' which is returned by void functions or expressions that don't produce a value
+            # But the requirement says "only the result of expression-statements"
+            # In C++, almost everything is an expression.
+            if result is not None:
+                print(result)
+        return result
 
     def visit_block_statement(self, stmt: AST.BlockStatement):
         """Execute a block statement with new scope"""
@@ -403,7 +457,7 @@ class Interpreter:
         value, scope = self.resolve_variable(expr.name)
         if scope is None:
             raise RuntimeError(f"Undefined variable '{expr.name}'.")
-        
+
         # If it's a reference, get the referenced value
         if isinstance(value, ReferenceValue):
             return value.get()
@@ -423,7 +477,7 @@ class Interpreter:
                 return True
             right = self.visit_expression(expr.right)
             return self.is_truthy(left) or self.is_truthy(right)
-        
+
         # For other operators, evaluate both sides
         left = self.visit_expression(expr.left)
         right = self.visit_expression(expr.right)
@@ -455,7 +509,6 @@ class Interpreter:
         else:
             raise RuntimeError(f"Unknown operator: {expr.operator}")
 
-
     def visit_unary_expression(self, expr: AST.UnaryExpression) -> Any:
         operand = self.visit_expression(expr.operand)
 
@@ -476,7 +529,7 @@ class Interpreter:
             target_value, scope = self.resolve_variable(expr.target.name)
             if scope is None:
                 raise RuntimeError(f"Undefined variable '{expr.target.name}'.")
-            
+
             if isinstance(target_value, ReferenceValue):
                 target_value.set(value)
             else:
@@ -510,20 +563,33 @@ class Interpreter:
             return self.instantiate_class(expr.callee, expr.arguments)
 
         # Check if it's a user-defined function
-        if expr.callee in self.functions:
-            func_def, _ = self.functions[expr.callee]
-            # Prepare arguments, handling references
+        sym = self.node_symbols.get(expr)
+        if isinstance(sym, (AST.FunctionDefinition, AST.MethodDefinition, AST.ConstructorDefinition)):
+            # Fallback if node_symbols contains the node itself
+            func_def = sym
             args = []
             for i, arg_expr in enumerate(expr.arguments):
-                if i < len(func_def.parameters):
-                    param = func_def.parameters[i]
-                    if param.param_type.is_reference:
-                        # For reference parameters, pass a ReferenceValue
+                args.append(self.visit_expression(arg_expr))
+            return self.visit_function_definition(func_def, args)
+
+        if isinstance(sym, FunctionSymbol) and sym.ast_node:
+            func_def = sym.ast_node
+            args = []
+            for i, arg_expr in enumerate(expr.arguments):
+                if i < len(sym.parameters):
+                    param_type = sym.parameters[i].type
+                    if isinstance(param_type, ReferenceType):
                         if isinstance(arg_expr, AST.IdentifierExpression):
                             val, scope = self.resolve_variable(arg_expr.name)
                             args.append(ReferenceValue(arg_expr.name, scope))
+                        elif isinstance(arg_expr, AST.MemberAccessExpression):
+                            obj_val = self.visit_expression(arg_expr.object)
+                            if isinstance(obj_val, ObjectValue):
+                                args.append(FieldReferenceValue(
+                                    obj_val, arg_expr.member))
+                            else:
+                                args.append(self.visit_expression(arg_expr))
                         else:
-                            # Complex reference expressions not supported
                             args.append(self.visit_expression(arg_expr))
                     else:
                         args.append(self.visit_expression(arg_expr))
@@ -531,22 +597,74 @@ class Interpreter:
                     args.append(self.visit_expression(arg_expr))
             return self.visit_function_definition(func_def, args)
 
+        # Fallback to name search (less reliable for overloading)
+        if expr.callee in self.functions:
+            overloads = self.functions[expr.callee]
+            for func_def, closure in overloads:
+                if len(func_def.parameters) == len(expr.arguments):
+                    args = [self.visit_expression(arg)
+                            for arg in expr.arguments]
+                    return self.visit_function_definition(func_def, args)
+
         raise RuntimeError(f"Unknown function '{expr.callee}'.")
 
     def visit_method_call_expression(self, expr: AST.MethodCallExpression) -> Any:
         obj = self.visit_expression(expr.object)
-        
+
         if not isinstance(obj, ObjectValue):
             raise RuntimeError("Cannot call method on non-object")
 
+        sym = self.node_symbols.get(expr)
+
+        if isinstance(sym, FunctionSymbol):
+            method_def = sym.ast_node
+
+            # Virtual dispatch
+            if sym.is_virtual:
+                # Look for the method in the dynamic type
+                dynamic_class_def = self.classes.get(obj.class_name)
+                actual_method = self.find_method(
+                    dynamic_class_def, expr.method)
+                if actual_method:
+                    method_def = actual_method
+
+            if not method_def:
+                raise RuntimeError(f"Method '{expr.method}' not found.")
+
+            # Prepare arguments
+            args = []
+            for i, arg_expr in enumerate(expr.arguments):
+                if i < len(sym.parameters):
+                    param_type = sym.parameters[i].type
+                    if isinstance(param_type, ReferenceType):
+                        if isinstance(arg_expr, AST.IdentifierExpression):
+                            val, scope = self.resolve_variable(arg_expr.name)
+                            args.append(ReferenceValue(arg_expr.name, scope))
+                        elif isinstance(arg_expr, AST.MemberAccessExpression):
+                            obj_val = self.visit_expression(arg_expr.object)
+                            if isinstance(obj_val, ObjectValue):
+                                args.append(FieldReferenceValue(
+                                    obj_val, arg_expr.member))
+                            else:
+                                args.append(self.visit_expression(arg_expr))
+                        else:
+                            args.append(self.visit_expression(arg_expr))
+                    else:
+                        args.append(self.visit_expression(arg_expr))
+                else:
+                    args.append(self.visit_expression(arg_expr))
+
+            return self.visit_method_definition(method_def, obj, args)
+
+        # Fallback
         class_def = self.classes.get(obj.class_name)
         if not class_def:
             raise RuntimeError(f"Class '{obj.class_name}' not found.")
 
-        # Find and execute the method
         method = self.find_method(class_def, expr.method)
         if not method:
-            raise RuntimeError(f"Method '{expr.method}' not found in class '{obj.class_name}'.")
+            raise RuntimeError(
+                f"Method '{expr.method}' not found in class '{obj.class_name}'.")
 
         args = [self.visit_expression(arg) for arg in expr.arguments]
         return self.visit_method_definition(method, obj, args)
@@ -558,7 +676,8 @@ class Interpreter:
             raise RuntimeError("Cannot access member of non-object")
 
         if expr.member not in obj.fields:
-            raise RuntimeError(f"Field '{expr.member}' not found in class '{obj.class_name}'.")
+            raise RuntimeError(
+                f"Field '{expr.member}' not found in class '{obj.class_name}'.")
 
         return obj.fields[expr.member]
 
@@ -570,7 +689,7 @@ class Interpreter:
 
         # Initialize fields with default values
         obj = ObjectValue(class_name, {})
-        
+
         # Collect fields from class hierarchy
         self.collect_fields(class_def, obj)
 
@@ -582,9 +701,11 @@ class Interpreter:
             parent_def = self.classes.get(class_def.parent)
             if parent_def:
                 # Find parent's default constructor (no arguments)
-                parent_default_constructor = self.find_constructor(parent_def, 0, [])
+                parent_default_constructor = self.find_constructor(
+                    parent_def, 0, [])
                 if parent_default_constructor:
-                    self.visit_constructor_definition(parent_default_constructor, obj, [])
+                    self.visit_constructor_definition(
+                        parent_default_constructor, obj, [])
 
         # Find and call the appropriate constructor
         constructor = self.find_constructor(class_def, len(args), args)
@@ -617,14 +738,14 @@ class Interpreter:
         """Check if derived_name is a subclass of base_name"""
         if derived_name == base_name:
             return True
-        
+
         class_def = self.classes.get(derived_name)
         if not class_def:
             return False
-        
+
         if class_def.parent:
             return self.is_subclass(class_def.parent, base_name)
-        
+
         return False
 
     def find_method(self, class_def: AST.ClassDefinition, method_name: str) -> Optional[AST.MethodDefinition]:
@@ -648,7 +769,7 @@ class Interpreter:
             arg_type = arg_types[0]
             if isinstance(arg_type, ObjectValue) and arg_type.class_name == class_def.name:
                 return None  # Use implicit copy constructor
-        
+
         # Look for explicit constructors
         for member in class_def.members:
             if isinstance(member, AST.ConstructorDefinition) and len(member.parameters) == arg_count:
@@ -657,7 +778,7 @@ class Interpreter:
         # If no explicit constructor found and arg_count is 0, use implicit default constructor
         if arg_count == 0:
             return None  # Use implicit default constructor
-        
+
         return None
 
     def is_truthy(self, value: Any) -> bool:
@@ -690,7 +811,7 @@ def run_interpreter(path: Path) -> Tuple[bool, str]:
         parser.addErrorListener(BailErrorListener())
 
         tree = parser.program()
-        
+
         # Build AST
         ast_builder = ASTBuilder()
         ast = ast_builder.visitProgram(tree)
@@ -700,8 +821,8 @@ def run_interpreter(path: Path) -> Tuple[bool, str]:
         analyzer.visit_program(ast)
 
         # Interpret
-        interpreter = Interpreter()
-        interpreter.visit_program(ast)
+        interpreter = Interpreter(analyzer.node_symbols)
+        interpreter.interpret(ast)
 
         output = '\n'.join(interpreter.output)
         return True, output
@@ -712,6 +833,152 @@ def run_interpreter(path: Path) -> Tuple[bool, str]:
         return False, f"Internal error: {str(e)}"
 
 
+class CollectErrorListener(ErrorListener):
+    def __init__(self):
+        super().__init__()
+        self.errors = []
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        self.errors.append(f"Syntax Error at {line}:{column}: {msg}")
+
+
+def is_complete_input(text: str) -> bool:
+    text = text.strip()
+    if not text:
+        return True
+
+    # Check brace/paren balance
+    if text.count('{') > text.count('}'):
+        return False
+    if text.count('(') > text.count(')'):
+        return False
+
+    # Heuristic for complete statement/declaration:
+    # Must end in ; or }
+    if not (text.endswith(';') or text.endswith('}')):
+        return False
+
+    return True
+
+
+def run_repl(initial_file: Optional[Path] = None):
+    analyzer = SemanticAnalyzer()
+    interpreter = Interpreter(analyzer.node_symbols)
+    ast_builder = ASTBuilder()
+
+    # Initial file processing
+    if initial_file:
+        try:
+            input_stream = FileStream(str(initial_file), encoding="utf-8")
+            lexer = MiniCLexer(input_stream)
+            token_stream = CommonTokenStream(lexer)
+            parser = MiniCParser(token_stream)
+
+            error_listener = CollectErrorListener()
+            parser.removeErrorListeners()
+            parser.addErrorListener(error_listener)
+
+            tree = parser.program()
+            if error_listener.errors:
+                for err in error_listener.errors:
+                    print(err, file=sys.stderr)
+                return
+
+            ast = ast_builder.visitProgram(tree)
+            analyzer.visit_program(ast)
+            interpreter.interpret(ast)
+
+            if interpreter.output:
+                print("\n".join(interpreter.output))
+                interpreter.output = []
+
+        except (SemanticError, RuntimeError) as e:
+            print(f"Error during initialization: {e}", file=sys.stderr)
+        except Exception as e:
+            print(
+                f"Internal error during initialization: {e}", file=sys.stderr)
+
+    interpreter.repl_mode = True
+    print("\nMiniC REPL")
+    print("Type 'exit' to quit.\n")
+
+    while True:
+        try:
+            code_lines = []
+            while True:
+                prompt = ">>> " if not code_lines else "... "
+                line = input(prompt)
+
+                if line.strip().lower() == "exit":
+                    return
+
+                code_lines.append(line)
+                code = "\n".join(code_lines)
+
+                if is_complete_input(code):
+                    break
+
+            if not code.strip():
+                continue
+
+            # Parse input
+            input_stream = InputStream(code)
+            lexer = MiniCLexer(input_stream)
+            token_stream = CommonTokenStream(lexer)
+            parser = MiniCParser(token_stream)
+
+            error_listener = CollectErrorListener()
+            parser.removeErrorListeners()
+            parser.addErrorListener(error_listener)
+
+            # Try parsing as program (declarations) first
+            tree = parser.program()
+
+            nodes = []
+            # We check if it matched at least one declaration and reached EOF
+            if not error_listener.errors and tree.children and token_stream.LA(1) == -1:
+                program_ast = ast_builder.visitProgram(tree)
+                nodes = program_ast.declarations
+            else:
+                # Try parsing as statement
+                token_stream.seek(0)
+                parser.reset()
+                error_listener.errors = []
+                tree = parser.statement()
+                # LA(1) == -1 is EOF
+                if not error_listener.errors and (token_stream.LA(1) == -1):
+                    nodes = [ast_builder.visitStatement(tree)]
+                else:
+                    if not error_listener.errors:
+                        print(
+                            "Syntax Error: Incomplete input or trailing characters.", file=sys.stderr)
+                    else:
+                        for err in error_listener.errors:
+                            print(err, file=sys.stderr)
+                    continue
+
+            # Execute nodes
+            for node in nodes:
+                try:
+                    analyzer.analyze_repl_node(node)
+                    interpreter.visit_repl_node(node)
+
+                    if interpreter.output:
+                        print("\n".join(interpreter.output))
+                        interpreter.output = []
+                except (SemanticError, RuntimeError) as e:
+                    print(f"Error: {e}")
+                except Exception as e:
+                    print(f"Internal error: {e}")
+
+        except EOFError:
+            print("\nExiting...")
+            break
+        except KeyboardInterrupt:
+            print("\nInterrupt")
+            continue
+
+
 def extract_expected_output(file_path: Path) -> Optional[str]:
     """Extract expected output from /* EXPECT: ... */ comment"""
     with open(file_path, 'r') as f:
@@ -719,7 +986,8 @@ def extract_expected_output(file_path: Path) -> Optional[str]:
 
     # Look for /* EXPECT: ... */ or /* EXPECT (.*?): ... */
     import re
-    match = re.search(r'/\*\s*EXPECT\s*(?:\([^)]*\))?\s*:\s*(.*?)\*/', content, re.DOTALL)
+    match = re.search(
+        r'/\*\s*EXPECT\s*(?:\([^)]*\))?\s*:\s*(.*?)\*/', content, re.DOTALL)
     if match:
         lines = match.group(1).strip().split('\n')
         # Clean up each line (remove leading/trailing whitespace and comments)
@@ -762,19 +1030,16 @@ def run_suite(path: Path):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
+        if sys.argv[1] == "test":
+            base = Path(__file__).parent / "tests"
+            p_passed, p_total = run_suite(base / "positive")
+            print(f"\nSummary: {p_passed}/{p_total} tests passed")
+            sys.exit(0 if p_passed == p_total else 1)
         path = Path(sys.argv[1])
-        success, output = run_interpreter(path)
-        if success:
-            print(output)
-            sys.exit(0)
+        if path.exists() and path.is_file():
+            run_repl(path)
         else:
-            print(f"Error: {output}", file=sys.stderr)
+            print(f"Error: File {path} not found.")
             sys.exit(1)
     else:
-        base = Path(__file__).parent / "tests"
-        if not base.exists():
-            print(f"Tests folder not found at {base}")
-            sys.exit(1)
-
-        p_passed, p_total = run_suite(base / "positive")
-        print(f"\nSummary: {p_passed}/{p_total} tests passed")
+        run_repl()

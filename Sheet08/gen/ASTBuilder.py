@@ -122,8 +122,7 @@ class ASTBuilder(MiniCVisitor):
         elif ctx.returnStatement():
             return self.visitReturnStatement(ctx.returnStatement())
         elif ctx.block():
-            # Nested block - flatten it into the statement list
-            return self.visitBlockStatements(ctx.block())
+            return BlockStatement(self.visitBlockStatements(ctx.block()))
         elif ctx.expression():
             expr = self.visitExpression(ctx.expression())
             return ExpressionStatement(expr)

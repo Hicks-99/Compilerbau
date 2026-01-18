@@ -50,6 +50,7 @@ class FunctionSymbol:
         self.is_virtual = is_virtual
         self.class_name = class_name
         self.is_defined = False
+        self.ast_node = None
 
     def __str__(self):
         params = ", ".join([str(p.type) for p in self.parameters])
@@ -190,6 +191,20 @@ class SemanticAnalyzer:
             elif isinstance(decl, AST.FunctionDefinition):
                 self.analyze_function_body(decl)
 
+    def analyze_repl_node(self, node: Union[AST.Declaration, AST.Statement]):
+        """Analyze a single node for REPL (define-before-use)"""
+        if isinstance(node, AST.ClassDefinition):
+            self.collect_class(node)
+            self.resolve_inheritance()  # Re-check inheritance
+            self.analyze_class_body(node)
+        elif isinstance(node, AST.FunctionDefinition):
+            self.collect_function(node)
+            self.analyze_function_body(node)
+        elif isinstance(node, AST.Statement):
+            self.visit_statement(node)
+        else:
+            raise SemanticError(f"Unsupported REPL node type: {type(node)}")
+
     def type_from_ast(self, type_node: AST.Type) -> TypeSymbol:
         base = self.symbol_table.resolve_type(type_node.base_type)
         if type_node.is_reference:
@@ -206,6 +221,7 @@ class SemanticAnalyzer:
         params, _ = self._collect_parameters(node.parameters)
 
         func = FunctionSymbol(node.name, ret_type, params)
+        func.ast_node = node
         self.symbol_table.declare_function(func)
         self.node_symbols[node] = func
 
@@ -245,7 +261,10 @@ class SemanticAnalyzer:
     def analyze_function_body(self, node: Union[AST.FunctionDefinition, AST.MethodDefinition, AST.ConstructorDefinition]):
         func = self.node_symbols[node]
         self.current_function = func
-        self.symbol_table.push_scope()
+
+        # Isolate scope for function body (cannot see session variables)
+        old_scopes = self.symbol_table.scopes
+        self.symbol_table.scopes = [{}]
 
         for p in func.parameters:
             self.symbol_table.declare_variable(p.name, p.type)
@@ -253,7 +272,7 @@ class SemanticAnalyzer:
         for stmt in node.body:
             self.visit_statement(stmt)
 
-        self.symbol_table.pop_scope()
+        self.symbol_table.scopes = old_scopes
         self.current_function = None
 
     def analyze_class_body(self, node: AST.ClassDefinition):
@@ -292,6 +311,7 @@ class SemanticAnalyzer:
 
         meth = FunctionSymbol(member.name, ret_type, params, is_method=True,
                               is_virtual=member.is_virtual, class_name=cls.name)
+        meth.ast_node = member
 
         if member.name not in cls.members:
             cls.members[member.name] = []
@@ -317,6 +337,7 @@ class SemanticAnalyzer:
 
         ctor = FunctionSymbol(member.name, self.symbol_table.void_type,
                               params, is_method=True, class_name=cls.name)
+        ctor.ast_node = member
 
         if "__ctor__" not in cls.members:
             cls.members["__ctor__"] = []
@@ -334,6 +355,8 @@ class SemanticAnalyzer:
     def visit_statement(self, stmt: AST.Statement):
         if isinstance(stmt, AST.VariableDeclaration):
             self._visit_var_decl(stmt)
+        elif isinstance(stmt, AST.BlockStatement):
+            self._visit_block(stmt.statements)
         elif isinstance(stmt, AST.ReturnStatement):
             self._visit_return(stmt)
         elif isinstance(stmt, AST.IfStatement):
@@ -553,18 +576,19 @@ class SemanticAnalyzer:
 
         # 2. Constructor Call
         if expr.callee in self.symbol_table.classes:
-            return self._resolve_constructor_call(expr.callee, arg_infos)
+            return self._resolve_constructor_call(expr.callee, arg_infos, expr)
 
         # 3. Method Call (Implicit this)
         if self.current_class:
-            res = self._check_method_call_implicit(expr.callee, arg_infos)
+            res = self._check_method_call_implicit(
+                expr.callee, arg_infos, expr)
             if res:
                 return res
 
         # 4. Global Function Call
-        return self._resolve_global_call(expr.callee, arg_infos)
+        return self._resolve_global_call(expr.callee, arg_infos, expr)
 
-    def _check_method_call_implicit(self, callee: str, arg_infos: List[Tuple[TypeSymbol, bool]]) -> Optional[Tuple[TypeSymbol, bool]]:
+    def _check_method_call_implicit(self, callee: str, arg_infos: List[Tuple[TypeSymbol, bool]], expr: AST.CallExpression) -> Optional[Tuple[TypeSymbol, bool]]:
         if not self.current_class:
             return None
 
@@ -572,6 +596,7 @@ class SemanticAnalyzer:
         method_candidate = self.lookup_method_in_hierarchy(
             self.current_class, callee, arg_infos)
         if method_candidate:
+            self.node_symbols[expr] = method_candidate
             return method_candidate.return_type, False
 
         # Check field (error)
@@ -580,15 +605,16 @@ class SemanticAnalyzer:
 
         return None
 
-    def _resolve_global_call(self, callee: str, arg_infos: List[Tuple[TypeSymbol, bool]]) -> Tuple[TypeSymbol, bool]:
+    def _resolve_global_call(self, callee: str, arg_infos: List[Tuple[TypeSymbol, bool]], expr: AST.CallExpression) -> Tuple[TypeSymbol, bool]:
         candidates = self.symbol_table.functions.get(callee, [])
         target = self._resolve_overload(candidates, arg_infos)
         if target:
+            self.node_symbols[expr] = target
             return target.return_type, False
         raise SemanticError(
             f"Function '{callee}' not found or parameters do not match.")
 
-    def _resolve_constructor_call(self, class_name: str, arg_infos: List[Tuple[TypeSymbol, bool]]) -> Tuple[TypeSymbol, bool]:
+    def _resolve_constructor_call(self, class_name: str, arg_infos: List[Tuple[TypeSymbol, bool]], expr: AST.CallExpression) -> Tuple[TypeSymbol, bool]:
         cls = self.symbol_table.classes[class_name]
         ctor_candidates = cls.members.get("__ctor__", [])
 
@@ -596,6 +622,7 @@ class SemanticAnalyzer:
         if isinstance(ctor_candidates, list) and ctor_candidates:
             target = self._resolve_overload(ctor_candidates, arg_infos)
             if target:
+                self.node_symbols[expr] = target
                 return cls, False
 
         # Implicit Default Constructor (if no explicit constructors exist)
@@ -646,6 +673,7 @@ class SemanticAnalyzer:
             raise SemanticError(
                 f"Method '{expr.method}' not found in class '{target_class.name}'.")
 
+        self.node_symbols[expr] = method
         return method.return_type, False
 
     def _visit_member_access(self, expr: AST.MemberAccessExpression) -> Tuple[TypeSymbol, bool]:
@@ -722,6 +750,8 @@ def analyze_file(path):
     analyzer.visit_program(ast)
 
 # Test runner
+
+
 def test_single_file(f: Path, expect_success: bool) -> tuple[str, str]:
     status = "FAIL"
     error_msg = ""
