@@ -9,7 +9,7 @@ class Parser:
     def __init__(self, input_string: str):
         """Initialisiert den Parser mit einem Input-String"""
         self.lexer = Lexer(input_string)
-        self.current_token = None
+        self.current_token: Token
         self.advance()  # Lese das erste Token
     
     def advance(self):

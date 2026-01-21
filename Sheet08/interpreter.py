@@ -26,14 +26,8 @@ It supports:
   - Field declarations
   - Constructors (default and custom)
   - Copy semantics
-- Basic inheritance (static dispatch only, no virtual methods yet)
+- Basic inheritance
 - Short-circuit evaluation for && and ||
-
-Key limitations:
-- Reference variables (outside function parameters) not fully supported
-- Virtual methods not yet implemented (static dispatch only)
-- Slicing and polymorphism not yet implemented
-- Some edge cases in deep recursion (f95 function)
 """
 
 
